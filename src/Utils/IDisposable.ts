@@ -2,9 +2,9 @@ export interface IDisposable {
     dispose(): void;
 }
 
-export function using<T extends IDisposable>(resource: T, func: (resource: T) => void): void {
+export async function using<T extends IDisposable>(resource: T, func: (resource: T) => void): Promise<void> {
     try {
-        func(resource);
+        await func(resource);
     } finally {
         resource.dispose();
     }

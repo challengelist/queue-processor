@@ -16,6 +16,8 @@ describe("Send then receive", () => {
 
         let receivedObj: FakeData;
 
+        await processor.PushItemToQueue(obj);
+
         processor.Received = o => {
             receivedObj = o;
             cancel();

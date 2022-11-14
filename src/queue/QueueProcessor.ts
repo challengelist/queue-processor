@@ -65,7 +65,7 @@ export abstract class QueueProcessor<T extends QueueItem> {
     }
 
     public async Run(token: CancellationToken, cancel: (reason?: any) => void): Promise<void> {
-        using(new Timer(5000, async () => { await this.outputStats(); }), async () => {
+        await using(new Timer(5000, async () => { await this.outputStats(); }), async () => {
             new GracefulShutdownSource(token, cancel);
 
             while (!token.isCancelled) {
@@ -104,21 +104,20 @@ export abstract class QueueProcessor<T extends QueueItem> {
                     }
 
                     this.totalDequeued += items.length;
-                    
-                    new Promise(() => this.ProcessBatch(items)).then(() => {
-                        for (const item of items) {
-                            if (item.Failed) {
-                                this.totalErrors++;
-                                this.consecutiveErrors++;
+                    this.ProcessBatch(items);
 
-                                console.log(`Error processing ${item}`);
-                                this.attemptRetry(item);
-                            } else {
-                                this.totalProcessed++;
-                                this.consecutiveErrors = 0;
-                            }
+                    for (const item of items) {
+                        if (item.Failed) {
+                            this.totalErrors++;
+                            this.consecutiveErrors++;
+
+                            console.log(`Error processing ${item}`);
+                            await this.attemptRetry(item);
+                        } else {
+                            this.totalProcessed++;
+                            this.consecutiveErrors = 0;
                         }
-                    });
+                    }
                 } catch (e) {
                     this.consecutiveErrors++;
                     console.log(`Error dequeuing from queue: ${e}`);

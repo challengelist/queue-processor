@@ -1,12 +1,17 @@
 import CancellationToken from "cancellationtoken";
 import { Delay } from "../../src/Utils/Timer";
 import { FakeData } from "./FakeData";
-import { TestProcessor } from "./TestProcessor";
+import { TestBatchProcessor } from "./TestBatchProcessor";
 
-const processor: TestProcessor = new TestProcessor();
+const processor: TestBatchProcessor = new TestBatchProcessor();
 
 beforeEach(async () => {
     await processor.ClearQueue();
+});
+
+test("Process Empty Queue", async () => {
+    const { token, cancel } = CancellationToken.create();
+    await processor.Run(token, cancel);
 });
 
 describe("Send then receive", () => {

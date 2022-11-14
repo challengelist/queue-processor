@@ -11,3 +11,7 @@ export class Timer implements IDisposable {
         clearTimeout(this.timeout);
     }
 }
+
+export function Delay(time: number) {
+    return new Promise(resolve => setTimeout(resolve, time));
+}

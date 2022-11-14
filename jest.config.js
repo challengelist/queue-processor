@@ -1,5 +1,6 @@
 // eslint-disable-next-line no-undef
 module.exports = {
     preset: "ts-jest/presets/js-with-ts",
-    testEnvironment: "node"
+    testEnvironment: "node",
+    testTimeout: 20_000
 };

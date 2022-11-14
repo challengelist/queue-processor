@@ -1,6 +1,6 @@
 import CancellationToken from "cancellationtoken";
 import { using } from "../Utils/IDisposable";
-import { Timer } from "../Utils/Timer";
+import { Delay, Timer } from "../Utils/Timer";
 import { GracefulShutdownSource } from "./GracefulShutdownSource";
 import { QueueConfiguration } from "./QueueConfiguration";
 import { QueueItem } from "./QueueItem";
@@ -76,7 +76,7 @@ export abstract class QueueProcessor<T extends QueueItem> {
 
                 try {
                     if (this.totalInFlight >= this.config.MaxInFlightItems || this.consecutiveErrors > this.config.ErrorThreshold) {
-                        await this.delay(this.config.TimeBetweenPolls);
+                        await Delay(this.config.TimeBetweenPolls);
                         continue;
                     }
 
@@ -84,7 +84,7 @@ export abstract class QueueProcessor<T extends QueueItem> {
 
                     // eslint-disable-next-line eqeqeq
                     if (redisItems == null) {
-                        await this.delay(this.config.TimeBetweenPolls);
+                        await Delay(this.config.TimeBetweenPolls);
                         continue;
                     }
 
@@ -99,7 +99,7 @@ export abstract class QueueProcessor<T extends QueueItem> {
                     }
 
                     if (items.length === 0) {
-                        await this.delay(this.config.TimeBetweenPolls);
+                        await Delay(this.config.TimeBetweenPolls);
                         continue;
                     }
 
@@ -128,18 +128,14 @@ export abstract class QueueProcessor<T extends QueueItem> {
 
             while (this.totalInFlight > 0) {
                 console.log(`Waiting for remaining ${this.totalInFlight} in-flight items...`);
-                await this.delay(5000);
+                await Delay(5000);
             }
 
             console.log("shutdown complete.");
         });
 
         await this.outputStats();
-        await this.redis.disconnect();
-    }
-
-    private delay(time: number) {
-        return new Promise(resolve => setTimeout(resolve, time));
+        // await this.redis.disconnect();
     }
 
     private async attemptRetry(item: T): Promise<void> {

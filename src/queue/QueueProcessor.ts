@@ -37,13 +37,13 @@ export abstract class QueueProcessor<T extends QueueItem> {
     private readonly config: QueueConfiguration;
 
     private readonly redis = createClient({
-        url: process.env.REDIS_URL
+        url: "redis://:@localhost:6379"
     });
 
-    private totalProcessed!: number;
-    private totalDequeued!: number;
-    private totalErrors!: number;
-    private consecutiveErrors!: number;
+    private totalProcessed: number = 0;
+    private totalDequeued: number = 0;
+    private totalErrors: number = 0;
+    private consecutiveErrors: number = 0;
 
     private get totalInFlight(): number {
         return this.totalDequeued - this.totalProcessed - this.totalErrors;
@@ -65,12 +65,14 @@ export abstract class QueueProcessor<T extends QueueItem> {
     }
 
     public async Run(token: CancellationToken, cancel: (reason?: any) => void): Promise<void> {
-        using(new Timer(5000, this.outputStats), async () => {
+        using(new Timer(5000, async () => { await this.outputStats(); }), async () => {
             new GracefulShutdownSource(token, cancel);
 
             while (!token.isCancelled) {
-                if (this.consecutiveErrors > this.config.ErrorThreshold)
-                    throw new Error("Error threshold exceeded, shutting down");
+                if (this.consecutiveErrors > this.config.ErrorThreshold) {
+                    console.log("Error threshold exceeded, shutting down");
+                    break;
+                }
 
                 try {
                     if (this.totalInFlight >= this.config.MaxInFlightItems || this.consecutiveErrors > this.config.ErrorThreshold) {
@@ -133,7 +135,7 @@ export abstract class QueueProcessor<T extends QueueItem> {
             console.log("shutdown complete.");
         });
 
-        this.outputStats();
+        await this.outputStats();
         await this.redis.disconnect();
     }
 
@@ -170,8 +172,8 @@ export abstract class QueueProcessor<T extends QueueItem> {
         await this.redis.del(this.QueueName);
     }
 
-    private outputStats(): void {
-        console.log(`stats: queue:${this.GetQueueSize()} inflight:${this.totalInFlight} dequeued:${this.totalDequeued} processed:${this.totalProcessed} errors:${this.totalErrors}`);
+    private async outputStats(): Promise<void> {
+        // console.log(`stats: queue:${await this.GetQueueSize()} inflight:${this.totalInFlight} dequeued:${this.totalDequeued} processed:${this.totalProcessed} errors:${this.totalErrors}`);
     }
 
     protected abstract ProcessItem(item: T): void;
